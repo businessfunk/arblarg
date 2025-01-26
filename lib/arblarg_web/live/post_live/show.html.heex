@@ -1,0 +1,91 @@
+<div class="max-w-2xl mx-auto px-4 py-4">
+  <div class="mb-6">
+    <%= if @post.community_id do %>
+      <.link navigate={~p"/c/#{@post.community.slug}"} class="text-sm text-zinc-400 hover:text-white transition-colors">
+        ← Back to #{@post.community.name}
+      </.link>
+    <% else %>
+      <.link navigate={~p"/"} class="text-sm text-zinc-400 hover:text-white transition-colors">
+        ← Back to Global Feed
+      </.link>
+    <% end %>
+  </div>
+
+  <div class="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800 p-4">
+    <div class="flex justify-between items-start gap-2 -mt-1">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-red-900 flex items-center justify-center">
+          <span class="text-sm text-red-200 font-medium"><%= String.first(@post.author) %></span>
+        </div>
+        <div>
+          <span class="text-sm font-medium text-white"><%= @post.author %></span>
+          <span class="text-xs text-zinc-500 ml-2">No.<%= @post.id %></span>
+          <div class="text-xs text-gray-400 mt-0.5" data-timestamp>
+            <%= Timex.format!(@post.inserted_at, "{relative}", :relative) %>
+          </div>
+        </div>
+      </div>
+      <div class="text-xs text-gray-500" data-timestamp>
+        <%= ArblargWeb.PostHelpers.format_expiration(@post.expires_at) %>
+      </div>
+    </div>
+
+    <div class="post-content mt-4">
+      <%= if @post.body do %>
+        <div class="mt-3 text-white break-words"><%= Arblarg.HtmlSanitizer.sanitize(@post.body) %></div>
+      <% end %>
+
+      <%= if @post.link do %>
+        <%= if @post.is_youtube && @post.youtube_id do %>
+          <div class="mt-1.5">
+            <div class="relative aspect-video bg-zinc-800 rounded-lg overflow-hidden">
+              <iframe 
+                src={"https://www.youtube.com/embed/#{@post.youtube_id}"}
+                class="absolute inset-0 w-full h-full"
+                title="YouTube video player"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+              </iframe>
+            </div>
+            <a href={@post.link} target="_blank" rel="noopener noreferrer" 
+               class="text-xs text-zinc-400 hover:text-white transition-colors mt-2 inline-block">
+              <%= @post.link_domain %> ↗
+            </a>
+          </div>
+        <% else %>
+          <a href={@post.link} target="_blank" rel="noopener noreferrer" 
+             class="mt-1.5 block border border-zinc-800 rounded-lg overflow-hidden hover:bg-zinc-800 transition-colors">
+            <div class="media-preview">
+              <%= if @post.link_image do %>
+                <div class="relative aspect-[2/1] bg-zinc-800">
+                  <img src={@post.link_image} alt="" 
+                       class="absolute inset-0 w-full h-full object-contain"/>
+                </div>
+              <% end %>
+            </div>
+            <div class="p-3">
+              <div class="text-xs text-gray-400 truncate"><%= @post.link_domain %></div>
+              <%= if @post.link_title do %>
+                <div class="font-medium text-white truncate"><%= @post.link_title %></div>
+              <% end %>
+              <%= if @post.link_description do %>
+                <div class="text-sm text-gray-400 line-clamp-2 mt-1"><%= @post.link_description %></div>
+              <% end %>
+              <%= if @post.link_image do %>
+                <div class="text-xs text-zinc-500 mt-2 hidden [data-show-media='false']_&:block">
+                  Media preview hidden - change in settings
+                </div>
+              <% end %>
+            </div>
+          </a>
+        <% end %>
+      <% end %>
+    </div>
+    
+    <div class="mt-3 space-y-3">
+      <.reply_list replies={@post.replies} />
+      <.reply_form form={@reply_form} post_id={@post.id} />
+    </div>
+  </div>
+</div> 

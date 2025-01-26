@@ -1,0 +1,17 @@
+    <% end %>
+
+    <%= if Mix.env() == :dev do %>
+      <div class="mb-4 flex gap-2">
+        <button phx-click="stress_test" phx-value-mode="normal"
+                class="text-xs bg-red-900/50 hover:bg-red-900 text-red-200 px-2 py-1 rounded transition-colors">
+          Stress Test (500 posts)
+        </button>
+        <button phx-click="stress_test" phx-value-mode="extreme"
+                class="text-xs bg-red-900/50 hover:bg-red-900 text-red-200 px-2 py-1 rounded transition-colors">
+          Extreme Test (10k/min)
+        </button>
+      </div>
+    <% end %>
+    
+    <div data-show-compose class="compose-form">
+      <.form for={@form} phx-submit="create" class="space-y-4"> 
