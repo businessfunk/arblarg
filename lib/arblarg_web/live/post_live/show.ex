@@ -19,11 +19,11 @@ defmodule ArblargWeb.PostLive.Show do
 
     session_id = session["user_id"]
 
-    case Temporal.get_post!(id) do
+    case Temporal.get_post(id) do
       nil ->
         {:ok,
          socket
-         |> put_flash(:error, "Post not found or expired")
+         |> put_flash(:error, "Post not found or has expired")
          |> redirect(to: ~p"/")}
 
       post ->

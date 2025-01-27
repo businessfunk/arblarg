@@ -27,7 +27,6 @@ defmodule ArblargWeb.TrackedPostsLive do
 
   @impl true
   def handle_info({:interaction_created, post_id}, %{assigns: %{user_id: user_id}} = socket) do
-    # Fetch the newly tracked post and add it to the list if it's not already there
     case Temporal.get_post(post_id) do
       nil ->
         {:noreply, socket}
@@ -61,6 +60,21 @@ defmodule ArblargWeb.TrackedPostsLive do
         end)
 
       {:noreply, assign(socket, :posts, updated_posts)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Add this to periodically clean expired posts from the tracked list
+  @impl true
+  def handle_info(:cleanup_expired, socket) do
+    now = DateTime.utc_now()
+    active_posts = Enum.filter(socket.assigns.posts, fn post ->
+      DateTime.compare(post.expires_at, now) == :gt
+    end)
+
+    if length(active_posts) != length(socket.assigns.posts) do
+      {:noreply, assign(socket, :posts, active_posts)}
     else
       {:noreply, socket}
     end

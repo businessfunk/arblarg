@@ -33,13 +33,17 @@ defmodule Arblarg.Temporal do
     end
   end
 
+  defp active_posts_query do
+    from p in Post,
+      where: p.expires_at > ^DateTime.utc_now()
+  end
+
   def list_active_posts(opts \\ []) do
     limit = Keyword.get(opts, :limit, 20)
     offset = Keyword.get(opts, :offset, 0)
     community_id = Keyword.get(opts, :community_id)
 
-    Post
-    |> where([p], p.expires_at > ^DateTime.utc_now())
+    active_posts_query()
     |> filter_by_community(community_id)
     |> order_by([p], desc: p.inserted_at)
     |> limit(^limit)
@@ -249,9 +253,10 @@ defmodule Arblarg.Temporal do
   end
 
   def get_post!(id) do
-    Post
-    |> preload([:replies, :community])
-    |> Repo.get!(id)
+    case get_post(id) do
+      nil -> raise Ecto.NoResultsError, queryable: Post
+      post -> post
+    end
   end
 
   def change_reply(%Reply{} = reply, attrs \\ %{}) do
@@ -263,7 +268,7 @@ defmodule Arblarg.Temporal do
       nil -> nil
       post ->
         if DateTime.compare(post.expires_at, DateTime.utc_now()) == :gt do
-          Repo.preload(post, :replies)
+          Repo.preload(post, [:replies, :community])
         else
           nil
         end
