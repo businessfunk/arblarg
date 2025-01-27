@@ -57,6 +57,35 @@ defmodule ArblargWeb.FaqLive do
             mobile browsers. There's no separate mobile app needed - just visit the website on any device.
           </p>
         </div>
+
+        <div class="space-y-2">
+          <h2 class="text-lg font-semibold text-white">How does the trending posts section work?</h2>
+          <div class="text-zinc-300 leading-relaxed space-y-4">
+            <p>
+              The trending section shows posts that are currently generating the most discussion. Posts are ranked using a combination of factors:
+            </p>
+
+            <ul class="space-y-2 list-disc pl-5">
+              <li>
+                <span class="text-white">Total replies</span> - The more replies a post has, the higher it ranks
+              </li>
+              <li>
+                <span class="text-white">Recent activity</span> - Posts with replies in the last 3 hours get a significant boost
+              </li>
+              <li>
+                <span class="text-white">Freshness</span> - Newer posts rank higher than older ones with similar engagement
+              </li>
+            </ul>
+
+            <p class="text-sm text-zinc-400">
+              For example, a new post with 5 recent replies might rank higher than an older post with 10 total replies but no recent activity. This helps surface active discussions while letting older conversations naturally fade away.
+            </p>
+
+            <p class="text-sm text-zinc-400">
+              Only posts from the last 24 hours are considered for trending, and the list updates automatically as new replies come in.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="pt-8 border-t border-zinc-800">

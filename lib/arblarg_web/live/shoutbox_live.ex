@@ -54,7 +54,7 @@ defmodule ArblargWeb.ShoutboxLive do
 
   def render(assigns) do
     ~H"""
-    <div class="shoutbox fixed right-[max(2rem,calc((100vw-42rem)/2-24rem))] top-24 w-80 bg-zinc-900 rounded-lg border border-zinc-800 shadow-lg"
+    <div class="bg-zinc-900 rounded-lg border border-zinc-800 shadow-lg"
          id={"shoutbox-#{@id}"}
          phx-hook="Shoutbox">
       <div class="p-3 border-b border-zinc-800 flex items-center justify-between">

@@ -10,6 +10,7 @@ defmodule Arblarg.Temporal.Post do
     field :author, :string
     field :author_salt, :string
     field :is_op, :boolean, virtual: true
+    field :score, :float, virtual: true
     field :link, :string
     field :link_title, :string
     field :link_description, :string

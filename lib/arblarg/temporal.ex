@@ -350,4 +350,62 @@ defmodule Arblarg.Temporal do
       end
     end)
   end
+
+  def list_trending_posts(opts \\ []) do
+    limit = Keyword.get(opts, :limit, 5)
+    hours = Keyword.get(opts, :hours, 24)
+    now = DateTime.utc_now()
+    three_hours_ago = DateTime.add(now, -3 * 3600)
+
+    # First, get posts with their total reply counts
+    base_query = from(p in Post,
+      where: p.expires_at > ^now,
+      where: p.inserted_at > ago(^hours, "hour"),
+      left_join: r in assoc(p, :replies),
+      group_by: p.id,
+      select: %{
+        post_id: p.id,
+        total_replies: count(r.id)
+      }
+    )
+
+    # Then, get recent reply counts
+    recent_replies_query = from(r in Reply,
+      where: r.inserted_at > ^three_hours_ago,
+      group_by: r.post_id,
+      select: %{
+        post_id: r.post_id,
+        recent_count: count(r.id)
+      }
+    )
+
+    # Combine the queries and calculate the score
+    from(p in Post,
+      as: :post,
+      join: b in subquery(base_query), as: :base, on: b.post_id == p.id,
+      left_join: rr in subquery(recent_replies_query), as: :recent, on: rr.post_id == p.id,
+      select: p,
+      select_merge: %{
+        score: fragment(
+          "? * (1.0 + (COALESCE(?, 0) * 0.5)) * pow(0.9, extract(epoch from ? - ?)::float / 3600.0)",
+          b.total_replies,
+          type(rr.recent_count, :integer),
+          type(^now, :utc_datetime),
+          p.inserted_at
+        )
+      },
+      order_by: [
+        desc: fragment(
+          "? * (1.0 + (COALESCE(?, 0) * 0.5)) * pow(0.9, extract(epoch from ? - ?)::float / 3600.0)",
+          b.total_replies,
+          type(rr.recent_count, :integer),
+          type(^now, :utc_datetime),
+          p.inserted_at
+        )
+      ],
+      preload: [:community, :replies],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
 end

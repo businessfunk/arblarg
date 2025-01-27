@@ -138,6 +138,37 @@ html[data-show-timestamps="false"] [data-timestamp] {
   .post-item {
     transform: translate3d(0, 10px, 0);
   }
+
+  .sticky {
+    position: sticky;
+    top: 24px; /* Adjust this value to match your header height */
+  }
+  
+  /* Optional: Add smooth transitions for hover states */
+  .sidebar-link {
+    @apply transition-colors duration-200;
+  }
+  
+  /* Optional: Add custom scrollbar for long sidebars */
+  .sidebar-content {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.zinc.700') theme('colors.zinc.900');
+  }
+  
+  .sidebar-content::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .sidebar-content::-webkit-scrollbar-track {
+    background: theme('colors.zinc.900');
+  }
+  
+  .sidebar-content::-webkit-scrollbar-thumb {
+    background-color: theme('colors.zinc.700');
+    border-radius: 3px;
+  }
 }
 
 /* Add these styles for media visibility */

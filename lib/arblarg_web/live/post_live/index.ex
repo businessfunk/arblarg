@@ -11,6 +11,8 @@ defmodule ArblargWeb.PostLive.Index do
   def mount(params, session, socket) do
     user_id = get_user_id(session, socket)
 
+    connected = connected?(socket)
+
     if connected?(socket) do
       # Subscribe to posts channel
       Temporal.subscribe()
@@ -32,19 +34,23 @@ defmodule ArblargWeb.PostLive.Index do
 
     reply_forms = create_reply_forms(posts)
 
+    trending_posts = Temporal.list_trending_posts(limit: 5)
+
     {:ok,
      socket
-     |> stream(:posts, posts, temporary_assigns: [posts: []])
+     |> assign(:page_title, "Posts")
      |> assign(:user_id, user_id)
+     |> assign(:posts, posts)
      |> assign(:community, community)
+     |> assign(:trending_posts, trending_posts)
      |> assign(:reply_forms, reply_forms)
-     |> assign(:connected, connected?(socket))
+     |> assign(:form, to_form(Temporal.change_post(%Post{})))
+     |> assign(:has_more, length(posts) >= @posts_per_page)
+     |> assign(:post_count, length(posts))
+     |> assign(:connected, connected)
+     |> stream(:posts, posts)
      |> assign(:page, 1)
-     |> assign(:per_page, 10)
-     |> assign(:has_more, length(posts) == @posts_per_page)
-     |> assign(:form, to_form(%{}))
-     |> assign(form: to_form(Temporal.change_post(%Post{}))),
-     temporary_assigns: []}
+     |> assign(:per_page, 10)}
   end
 
   @impl true
@@ -240,13 +246,13 @@ defmodule ArblargWeb.PostLive.Index do
 
   @impl true
   def handle_info({:post_created, post}, socket) do
-    # Preload the community association
     post = post |> Arblarg.Repo.preload(:community)
     reply_forms = Map.put(socket.assigns.reply_forms, post.id, to_form(Temporal.change_reply(%Reply{})))
 
     {:noreply,
      socket
      |> assign(:reply_forms, reply_forms)
+     |> assign(:post_count, socket.assigns.post_count + 1)
      |> stream_insert(:posts, post, at: 0)}
   end
 
@@ -256,6 +262,7 @@ defmodule ArblargWeb.PostLive.Index do
     {:noreply,
      socket
      |> assign(:reply_forms, reply_forms)
+     |> assign(:post_count, socket.assigns.post_count - 1)
      |> stream_delete(:posts, %{id: post_id})}
   end
 
