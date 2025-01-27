@@ -91,7 +91,7 @@ defmodule ArblargWeb.FaqLive do
       <div class="pt-8 border-t border-zinc-800">
         <p class="text-zinc-300">
           Have more questions? Check out our <.link navigate="/about" class="text-red-400 hover:text-red-300">About page</.link>
-          or view the <.link href="https://github.com/alphafield/arblarg" class="text-red-400 hover:text-red-300">source code</.link>.
+          or view the <.link href="https://github.com/businessfunk/arblarg" class="text-red-400 hover:text-red-300">source code</.link>.
         </p>
       </div>
     </div>

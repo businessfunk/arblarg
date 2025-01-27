@@ -678,4 +678,20 @@ defmodule ArblargWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  def back_to_top(assigns) do
+    ~H"""
+    <div id="back-to-top-container" phx-hook="BackToTop">
+      <button
+        id="back-to-top"
+        class="fixed bottom-8 right-8 z-50 bg-red-500 hover:bg-red-600 text-white rounded-full p-3 shadow-lg transition-all duration-300 opacity-0 translate-y-8 invisible"
+        aria-label="Back to top"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      </button>
+    </div>
+    """
+  end
 end

@@ -172,19 +172,19 @@ html[data-show-timestamps="false"] [data-timestamp] {
 }
 
 /* Add these styles for media visibility */
-[data-show-media="false"] .media-preview {
+/* [data-show-media="false"] .media-preview {
   display: none;
 }
 
 [data-show-media="true"] .media-preview {
   display: block;
-}
+} */
 
 /* Use Tailwind's arbitrary value syntax for data attribute selectors */
 /* This allows the placeholder text to show only when media is disabled */
-[data-show-media="false"] .hidden\[data-show-media\=\'false\'\]_\&\:block {
+/* [data-show-media="false"] .hidden\[data-show-media\=\'false\'\]_\&\:block {
   display: block;
-}
+} */
 
 /* Update the shoutbox styles */
 .shoutbox {
@@ -303,4 +303,29 @@ html[data-show-timestamps="false"] [data-timestamp] {
   white-space: -pre-wrap;
   white-space: -o-pre-wrap;
   word-wrap: break-word;
+}
+
+/* Add this to your existing CSS */
+/* [data-show-media="false"] .media-preview img,
+[data-show-media="false"] .media-preview iframe {
+  display: none;
+} */
+
+/* Add these more specific rules */
+html[data-show-media="false"] .media-preview img,
+html[data-show-media="false"] .media-preview iframe,
+html[data-show-media="false"] [data-media-preview] {
+  display: none !important;
+}
+
+html[data-show-media="false"] [data-media-hidden-message] {
+  display: block !important;
+}
+
+html[data-show-media="true"] [data-media-preview] {
+  display: block !important;
+}
+
+html[data-show-media="true"] [data-media-hidden-message] {
+  display: none !important;
 }

@@ -24,6 +24,7 @@ import topbar from "../vendor/topbar"
 // Import the settings hook
 import Shoutbox from "./hooks/shoutbox"
 import Flash from "./hooks/flash"
+import BackToTop from "./hooks/back_to_top"
 
 // Generate a stable user ID if one doesn't exist
 let userId = localStorage.getItem('arblarg:user_id');
@@ -45,7 +46,8 @@ const loadHooks = async () => {
     SaveSetting: Settings.default,
     InfiniteScroll: InfiniteScroll.default,
     Shoutbox: Shoutbox,
-    Flash: Flash
+    Flash: Flash,
+    BackToTop
   };
 };
 
@@ -74,17 +76,21 @@ loadHooks().then(hooks => {
   // >> liveSocket.disableLatencySim()
   window.liveSocket = liveSocket
 
-  // Apply settings on page load
-  document.addEventListener('DOMContentLoaded', () => {
-    const timestampValue = localStorage.getItem('arblarg:show_timestamps')
-    document.documentElement.setAttribute('data-show-timestamps', timestampValue === 'true' ? 'true' : 'false')
-    
-    const composeValue = localStorage.getItem('arblarg:show_compose')
-    document.documentElement.setAttribute('data-show-compose', composeValue === 'true' ? 'true' : 'false')
-
+  // Apply settings on page load and navigation
+  const initializeSettings = () => {
     // Initialize media setting (default to true if not set)
-    const mediaValue = localStorage.getItem('arblarg:show_media')
-    document.documentElement.setAttribute('data-show-media', mediaValue === null ? 'true' : mediaValue)
+    const mediaValue = localStorage.getItem('arblarg:show_media');
+    document.documentElement.setAttribute('data-show-media', 
+      mediaValue === null ? 'true' : mediaValue);
+
+    // Initialize other settings...
+    const timestampValue = localStorage.getItem('arblarg:show_timestamps');
+    document.documentElement.setAttribute('data-show-timestamps', 
+      timestampValue === null ? 'true' : timestampValue);
+    
+    const composeValue = localStorage.getItem('arblarg:show_compose');
+    document.documentElement.setAttribute('data-show-compose', 
+      composeValue === null ? 'true' : composeValue);
 
     const backToTopButton = document.getElementById('back-to-top')
     if (!backToTopButton) return
@@ -113,12 +119,18 @@ loadHooks().then(hooks => {
         behavior: 'smooth'
       })
     })
-  })
+  };
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', initializeSettings);
+  
+  // Re-initialize on live navigation
+  window.addEventListener('phx:page-loading-stop', initializeSettings);
 
   // Update settings when changed
   window.addEventListener('arblarg:setting-changed', (e) => {
-    const { setting, value } = e.detail
-    document.documentElement.setAttribute(`data-${setting}`, value)
-  })
+    const { setting, value } = e.detail;
+    document.documentElement.setAttribute(`data-${setting}`, String(value));
+  });
 })
 

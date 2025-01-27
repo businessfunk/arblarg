@@ -223,14 +223,53 @@ defmodule ArblargWeb.SearchLive do
               <div class="mt-3 text-white break-words">
                 <%= post.body %>
               </div>
-              <.link_preview
-                :if={post.link}
-                link={post.link}
-                link_title={post.link_title}
-                link_description={post.link_description}
-                link_image={post.link_image}
-                link_domain={post.link_domain}
-              />
+              <%= if post.link do %>
+                <%= if post.is_youtube && post.youtube_id do %>
+                  <div class="mt-1.5">
+                    <div class="relative aspect-video bg-zinc-800 rounded-lg overflow-hidden" data-media-preview>
+                      <iframe
+                        src={"https://www.youtube.com/embed/#{post.youtube_id}"}
+                        class="absolute inset-0 w-full h-full"
+                        title="YouTube video player"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen>
+                      </iframe>
+                    </div>
+                    <div class="text-xs text-zinc-500 mt-2" data-media-hidden-message>
+                      Media preview hidden - change in settings
+                    </div>
+                    <a href={post.link} target="_blank" rel="noopener noreferrer"
+                       class="text-xs text-zinc-400 hover:text-white transition-colors mt-2 inline-block">
+                      <%= post.link_domain %> ↗
+                    </a>
+                  </div>
+                <% else %>
+                  <a href={post.link} target="_blank" rel="noopener noreferrer"
+                     class="mt-1.5 block border border-zinc-800 rounded-lg overflow-hidden hover:bg-zinc-800 transition-colors">
+                    <div class="media-preview">
+                      <%= if post.link_image do %>
+                        <div class="relative aspect-[2/1] bg-zinc-800" data-media-preview>
+                          <img src={post.link_image} alt=""
+                               class="absolute inset-0 w-full h-full object-contain"/>
+                        </div>
+                        <div class="text-xs text-zinc-500 p-3" data-media-hidden-message>
+                          Media preview hidden - change in settings
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="p-3">
+                      <div class="text-xs text-gray-400 truncate"><%= post.link_domain %></div>
+                      <%= if post.link_title do %>
+                        <div class="font-medium text-white truncate"><%= post.link_title %></div>
+                      <% end %>
+                      <%= if post.link_description do %>
+                        <div class="text-sm text-gray-400 line-clamp-2 mt-1"><%= post.link_description %></div>
+                      <% end %>
+                    </div>
+                  </a>
+                <% end %>
+              <% end %>
             </div>
           </.link>
         <% end %>

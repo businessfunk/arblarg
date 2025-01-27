@@ -45,7 +45,7 @@ defmodule ArblargWeb.AboutLive do
           providing instant updates and a smooth user experience.
         </p>
         <div class="flex gap-4 text-sm">
-          <a href="https://github.com/alphafield/arblarg"
+          <a href="https://github.com/businessfunk/arblarg"
              class="text-red-400 hover:text-red-300 transition-colors">
             View source code →
           </a>
@@ -58,7 +58,7 @@ defmodule ArblargWeb.AboutLive do
 
       <div class="pt-8 border-t border-zinc-800">
         <p class="text-zinc-500 text-sm">
-          Created by <a href="https://github.com/alphafield" class="text-zinc-400 hover:text-white transition-colors">@alphafield</a>
+          Created by <a href="https://github.com/businessfunk" class="text-zinc-400 hover:text-white transition-colors">@businessfunk</a>
         </p>
       </div>
     </div>
