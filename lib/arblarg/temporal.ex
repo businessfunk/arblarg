@@ -65,7 +65,12 @@ defmodule Arblarg.Temporal do
 
     Post
     |> where([p], p.expires_at > ^DateTime.utc_now())
-    |> where([p], ilike(p.body, ^search_term) or ilike(p.author, ^search_term))
+    |> where([p],
+      ilike(p.body, ^search_term) or
+      ilike(p.author, ^search_term) or
+      ilike(p.link_title, ^search_term) or
+      (p.is_youtube == true and ilike(p.link_title, ^search_term))
+    )
     |> order_by([p], desc: p.inserted_at)
     |> limit(20)
     |> preload([:replies, :community])

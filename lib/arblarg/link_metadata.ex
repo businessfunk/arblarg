@@ -40,66 +40,71 @@ defmodule Arblarg.LinkMetadata do
   end
 
   def extract_youtube_id(url) do
-    uri = URI.parse(url)
-
     cond do
-      # Handle youtu.be URLs
-      uri.host == "youtu.be" ->
-        uri.path |> String.trim_leading("/")
-
-      # Handle youtube.com URLs
-      uri.host in ["youtube.com", "www.youtube.com"] ->
-        case uri.query do
-          nil -> nil
-          query ->
-            query
-            |> URI.decode_query()
-            |> Map.get("v")
+      String.contains?(url, "youtube.com/watch") ->
+        case URI.parse(url) do
+          %URI{query: query} when is_binary(query) ->
+            case URI.decode_query(query) do
+              %{"v" => id} when is_binary(id) -> {:ok, id}
+              _ -> {:error, "No video ID found"}
+            end
+          _ -> {:error, "Invalid YouTube URL"}
         end
-
-      true -> nil
+      String.contains?(url, "youtu.be/") ->
+        case Regex.run(~r{youtu\.be/([^?]+)}, url) do
+          [_, id] -> {:ok, id}
+          _ -> {:error, "Invalid YouTube URL"}
+        end
+      true -> {:error, "Not a YouTube URL"}
     end
   end
 
   def fetch(url) do
-    with {:ok, _} <- validate_url(url) do
-      # Check if it's a direct image link
-      if is_direct_image?(url) do
-        {:ok, %{
-          title: nil,
-          description: nil,
-          image: url,
-          domain: URI.parse(url).host,
-          is_youtube: false,
-          youtube_id: nil
-        }}
-      else
-        if youtube_id = extract_youtube_id(url) do
-          {:ok, %{
-            title: nil,
-            description: nil,
-            image: nil,
-            domain: URI.parse(url).host,
-            is_youtube: true,
-            youtube_id: youtube_id
-          }}
-        else
-          with {:ok, %{body: body}} <- HTTPoison.get(url, [], follow_redirect: true),
-               {:ok, document} <- Floki.parse_document(body) do
-            metadata = %{
-              title: extract_title(document),
-              description: extract_description(document),
-              image: extract_image(document, url),
-              domain: URI.parse(url).host,
-              is_youtube: false,
-              youtube_id: nil
-            }
-            {:ok, metadata}
-          else
-            error -> {:error, error}
-          end
+    case extract_youtube_id(url) do
+      {:ok, _} ->
+        fetch_youtube_metadata(url)
+      _ ->
+        # Existing general metadata fetching logic
+        case HTTPoison.get(url, [], follow_redirect: true, max_redirects: 5) do
+          {:ok, %{status_code: 200, body: body}} ->
+            case Floki.parse_document(body) do
+              {:ok, document} ->
+                {:ok, %{
+                  title: extract_title(document),
+                  description: extract_description(document),
+                  image: extract_image(document, url),
+                  domain: extract_domain(url),
+                  is_youtube: false,
+                  youtube_id: nil
+                }}
+              _ -> {:error, "Failed to parse HTML"}
+            end
+          _ -> {:error, "Failed to fetch URL"}
         end
-      end
+    end
+  end
+
+  defp fetch_youtube_metadata(url) do
+    case extract_youtube_id(url) do
+      {:ok, youtube_id} ->
+        # Fetch video metadata using YouTube oEmbed API
+        case HTTPoison.get("https://www.youtube.com/oembed?url=#{url}&format=json") do
+          {:ok, %{status_code: 200, body: body}} ->
+            case Jason.decode(body) do
+              {:ok, data} ->
+                {:ok, %{
+                  title: data["title"],
+                  description: nil, # YouTube oEmbed doesn't provide description
+                  image: "https://img.youtube.com/vi/#{youtube_id}/maxresdefault.jpg",
+                  domain: "www.youtube.com",
+                  is_youtube: true,
+                  youtube_id: youtube_id
+                }}
+              _ -> {:error, "Failed to parse YouTube metadata"}
+            end
+          _ -> {:error, "Failed to fetch YouTube metadata"}
+        end
+      _ -> {:error, "Not a YouTube URL"}
     end
   end
 
@@ -117,6 +122,15 @@ defmodule Arblarg.LinkMetadata do
           title -> String.trim(title)
         end
       title -> title
+    end
+    |> maybe_store_youtube_title()
+  end
+
+  defp maybe_store_youtube_title(nil), do: nil
+  defp maybe_store_youtube_title(title) do
+    case Regex.run(~r/^(.*?)\s*-\s*YouTube$/, title) do
+      [_, video_title] -> String.trim(video_title)
+      _ -> title
     end
   end
 

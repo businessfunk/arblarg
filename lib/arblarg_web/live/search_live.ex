@@ -126,8 +126,9 @@ defmodule ArblargWeb.SearchLive do
 
   defp post_matches_query?(post, query) do
     query = String.downcase(query)
-    String.contains?(String.downcase(post.body), query) ||
-      String.contains?(String.downcase(post.author), query) ||
+    String.contains?(String.downcase(post.body || ""), query) ||
+      String.contains?(String.downcase(post.author || ""), query) ||
+      String.contains?(String.downcase(post.link_title || ""), query) ||
       (post.community && String.contains?(String.downcase(post.community.name), query))
   end
 
