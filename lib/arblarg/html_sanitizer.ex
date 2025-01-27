@@ -3,12 +3,12 @@ defmodule Arblarg.HtmlSanitizer do
   import HtmlEntities
 
   @doc """
-  Sanitizes user input to prevent XSS attacks while allowing basic formatting
+  Sanitizes user input to prevent XSS attacks while allowing only links
   """
   def sanitize(nil), do: nil
   def sanitize(text) when is_binary(text) do
     text
-    |> HtmlEntities.encode()  # First encode the text to prevent XSS
+    |> HtmlEntities.encode()  # First encode all HTML entities
     |> linkify()              # Then convert URLs to links
     |> raw()                  # Finally mark as safe HTML
   end
@@ -18,14 +18,29 @@ defmodule Arblarg.HtmlSanitizer do
     url_regex = ~r/https?:\/\/[^\s<>]+/
 
     Regex.replace(url_regex, text, fn url ->
-      case Arblarg.LinkMetadata.validate_url(url) do
+      case validate_url(url) do
         {:ok, valid_url} ->
-          # Encode URLs in href to prevent XSS
-          "<a href=\"#{HtmlEntities.encode(valid_url)}\" rel=\"nofollow noopener\" target=\"_blank\">#{url}</a>"
+          # Only allow specific HTML attributes for links
+          "<a href=\"#{HtmlEntities.encode(valid_url)}\" " <>
+            "class=\"text-red-400 hover:text-red-300 hover:underline\" " <>
+            "rel=\"nofollow noopener\" " <>
+            "target=\"_blank\">" <>
+            "#{HtmlEntities.encode(format_url_for_display(url))}</a>"
         _ ->
-          url
+          HtmlEntities.encode(url)
       end
     end)
+  end
+
+  # Validate URL to prevent javascript: and other malicious protocols
+  defp validate_url(url) do
+    case URI.parse(url) do
+      %URI{scheme: scheme, host: host}
+      when scheme in ["http", "https"] and is_binary(host) ->
+        {:ok, url}
+      _ ->
+        :error
+    end
   end
 
   # Format URL for display by removing protocol and truncating if too long
@@ -37,7 +52,6 @@ defmodule Arblarg.HtmlSanitizer do
   end
 
   defp truncate_url(url) when byte_size(url) > 50 do
-    # Split URL into parts
     case URI.parse(url) do
       %URI{host: host, path: path} when is_binary(host) and is_binary(path) ->
         path_parts = String.split(path, "/", trim: true)

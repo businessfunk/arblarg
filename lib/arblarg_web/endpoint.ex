@@ -7,12 +7,20 @@ defmodule ArblargWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_arblarg_key",
-    signing_salt: "O0VyQXzg",
-    same_site: "Lax"
+    signing_salt: "your_signing_salt",
+    same_site: "Strict",
+    secure: true,
+    http_only: true,  # Prevent JavaScript access
+    extra: "SameSite=Strict",
+    max_age: 60 * 60 * 24 * 7  # 1 week
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
+    websocket: [
+      connect_info: [session: @session_options],
+      check_origin: true,  # Prevent WebSocket CSRF
+      timeout: 60_000  # 1 minute timeout
+    ],
     longpoll: [connect_info: [session: @session_options]]
 
   # Serve at "/" the static files from "priv/static" directory.
@@ -22,8 +30,12 @@ defmodule ArblargWeb.Endpoint do
   plug Plug.Static,
     at: "/",
     from: :arblarg,
-    gzip: false,
-    only: ArblargWeb.static_paths()
+    gzip: true,  # Enable gzip compression
+    only: ArblargWeb.static_paths(),
+    headers: [
+      {"cache-control", "public, max-age=31536000"}, # 1 year for static assets
+      {"x-content-type-options", "nosniff"}
+    ]
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
@@ -44,7 +56,9 @@ defmodule ArblargWeb.Endpoint do
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
-    json_decoder: Phoenix.json_library()
+    json_decoder: Phoenix.json_library(),
+    length: 10_000_000,  # 10mb max upload size
+    read_timeout: 60_000  # 1 minute read timeout
 
   plug Plug.MethodOverride
   plug Plug.Head

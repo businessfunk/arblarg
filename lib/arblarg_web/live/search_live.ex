@@ -3,10 +3,17 @@ defmodule ArblargWeb.SearchLive do
   alias Arblarg.Temporal
   import ArblargWeb.PostComponents
 
-  def mount(_params, _session, socket) do
+  # Add rate limiting configuration
+  @search_limit_scale 60_000  # 1 minute
+  @search_limit_bucket_size 10  # Max 10 searches per minute
+
+  def mount(_params, session, socket) do
     if connected?(socket) do
       Arblarg.Temporal.subscribe()
     end
+
+    # Get client IP from session
+    client_ip = get_client_ip(session)
 
     {:ok, assign(socket, [
       query: "",
@@ -15,19 +22,55 @@ defmodule ArblargWeb.SearchLive do
       sort_by: "newest",
       min_replies: 0,
       max_age_hours: 24,
-      expiring_within: "all"
+      expiring_within: "all",
+      client_ip: client_ip
     ])}
   end
 
-  def handle_event(event, params, socket) when event in ["search"] do
+  def handle_event("search", params, %{assigns: %{client_ip: client_ip}} = socket) do
+    # Rate limit check
+    case check_rate_limit(client_ip) do
+      :ok ->
+        perform_search(params, socket)
+      {:error, :rate_limited} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "Too many searches. Please wait a moment.")
+          |> assign(loading: false)}
+    end
+  end
+
+  # Add security-focused helper functions
+  defp check_rate_limit(client_ip) do
+    case Hammer.check_rate("search:#{client_ip}", @search_limit_scale, @search_limit_bucket_size) do
+      {:allow, _count} -> :ok
+      {:deny, _count} -> {:error, :rate_limited}
+    end
+  end
+
+  defp get_client_ip(session) do
+    session["client_ip"] || "0.0.0.0"
+  end
+
+  # Sanitize search input
+  defp sanitize_query(query) when is_binary(query) do
+    query
+    |> String.slice(0, 100)  # Limit query length
+    |> String.replace(~r/[^\w\s@.-]/, "")  # Only allow safe characters
+  end
+  defp sanitize_query(_), do: ""
+
+  # Update the perform_search function with sanitization
+  defp perform_search(params, socket) do
     query = params["query"] || socket.assigns.query
+    sanitized_query = sanitize_query(query)
     sort_by = params["sort_by"] || socket.assigns.sort_by
     min_replies = String.to_integer(params["min_replies"] || to_string(socket.assigns.min_replies))
     max_age_hours = String.to_integer(params["max_age_hours"] || to_string(socket.assigns.max_age_hours))
     expiring_within = params["expiring_within"] || socket.assigns.expiring_within
 
-    if String.length(query) >= 2 do
-      results = Temporal.search_posts(query)
+    if String.length(sanitized_query) >= 2 do
+      results = Temporal.search_posts(sanitized_query)
       |> Arblarg.Repo.preload(:replies)
       |> filter_by_replies(min_replies)
       |> filter_by_age(max_age_hours)
@@ -35,7 +78,7 @@ defmodule ArblargWeb.SearchLive do
       |> sort_results(sort_by)
 
       {:noreply, assign(socket,
-        query: query,
+        query: sanitized_query,
         sort_by: sort_by,
         min_replies: min_replies,
         max_age_hours: max_age_hours,
@@ -44,7 +87,7 @@ defmodule ArblargWeb.SearchLive do
         loading: false)}
     else
       {:noreply, assign(socket,
-        query: query,
+        query: sanitized_query,
         results: [],
         loading: false)}
     end

@@ -12,6 +12,7 @@ defmodule ArblargWeb.Router do
     }
     plug :assign_user_identity
     plug :put_security_headers
+    plug ArblargWeb.Plugs.Security
   end
 
   defp assign_user_identity(conn, _opts) do
@@ -35,7 +36,32 @@ defmodule ArblargWeb.Router do
     |> put_resp_header("x-download-options", "noopen")
     |> put_resp_header("x-permitted-cross-domain-policies", "none")
     |> put_resp_header("referrer-policy", "strict-origin-when-cross-origin")
-    |> put_resp_header("permissions-policy", "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()")
+    |> put_resp_header("permissions-policy", [
+      "accelerometer=()",
+      "camera=()",
+      "geolocation=()",
+      "gyroscope=()",
+      "magnetometer=()",
+      "microphone=()",
+      "payment=()",
+      "usb=()",
+      "interest-cohort=()"  # Block FLoC tracking
+    ] |> Enum.join(", "))
+    |> put_resp_header("content-security-policy", [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' https: data: *",
+      "media-src *",
+      "frame-src 'self' https://www.youtube.com https://youtube.com",
+      "connect-src 'self' ws: wss:",
+      "font-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+      "block-all-mixed-content"
+    ] |> Enum.join("; "))
   end
 
   scope "/", ArblargWeb do
