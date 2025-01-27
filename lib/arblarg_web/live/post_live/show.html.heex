@@ -1,4 +1,8 @@
-<div class="max-w-2xl mx-auto px-4 py-4">
+<.sidebar_layout 
+  current_community={@community}
+  trending_posts={[]}
+  user_id={@user_id}>
+  
   <div class="mb-6">
     <%= if @post.community_id do %>
       <.link navigate={~p"/c/#{@post.community.slug}"} class="text-sm text-zinc-400 hover:text-white transition-colors">
@@ -6,7 +10,7 @@
       </.link>
     <% else %>
       <.link navigate={~p"/"} class="text-sm text-zinc-400 hover:text-white transition-colors">
-        ← Back to Global Feed
+        ← Back to Home
       </.link>
     <% end %>
   </div>
@@ -89,4 +93,4 @@
       <.reply_form form={@reply_forms[@post.id]} post_id={@post.id} />
     </div>
   </div>
-</div> 
+</.sidebar_layout> 

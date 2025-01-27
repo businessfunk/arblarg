@@ -2,9 +2,7 @@ defmodule ArblargWeb.SettingsLive do
   use ArblargWeb, :live_view
 
   def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:page_title, "Settings")}
+    {:ok, assign(socket, page_title: "Settings")}
   end
 
   def render(assigns) do

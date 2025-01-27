@@ -4,6 +4,9 @@ defmodule ArblargWeb.PostLive.Index do
   alias Arblarg.Temporal.{Post, Reply}
   alias Arblarg.RateLimiter
   alias Arblarg.HtmlSanitizer
+  import ArblargWeb.LayoutComponents
+  import ArblargWeb.LiveHelpers
+  on_mount ArblargWeb.Live.Hooks.SidebarHooks
 
   @posts_per_page 20
 
@@ -20,6 +23,8 @@ defmodule ArblargWeb.PostLive.Index do
       # Also subscribe to shoutbox
       topic = Temporal.shoutbox_topic(nil)
       Phoenix.PubSub.subscribe(Arblarg.PubSub, topic)
+
+      Temporal.subscribe_to_trending()
     end
 
     {posts, community} = case params do
@@ -38,7 +43,7 @@ defmodule ArblargWeb.PostLive.Index do
 
     {:ok,
      socket
-     |> assign(:page_title, "Posts")
+     |> assign(:page_title, "Home")
      |> assign(:user_id, user_id)
      |> assign(:posts, posts)
      |> assign(:community, community)
@@ -73,11 +78,17 @@ defmodule ArblargWeb.PostLive.Index do
     params = if community_id == "home", do: params, else: Map.put(params, "community_id", community_id)
 
     case Temporal.create_post(params, socket.assigns.user_id) do
-      {:ok, _post} ->
+      {:ok, post} ->
+        post = post |> Arblarg.Repo.preload([:community, :replies])
+        reply_forms = Map.put(socket.assigns.reply_forms, post.id, to_form(Temporal.change_reply(%Reply{})))
+
         {:noreply,
          socket
          |> put_flash(:info, "Posted successfully")
-         |> assign(:form, to_form(%{"body" => "", "link" => ""}))}
+         |> assign(:form, to_form(%{"body" => "", "link" => ""}))
+         |> assign(:reply_forms, reply_forms)
+         |> assign(:post_count, socket.assigns.post_count + 1)
+         |> stream_insert(:posts, post, at: 0)}
 
       {:error, :rate_limit} ->
         {:noreply,
@@ -121,11 +132,17 @@ defmodule ArblargWeb.PostLive.Index do
     params = if community_id == "home", do: params, else: Map.put(params, "community_id", community_id)
 
     case Temporal.create_post(params, socket.assigns.user_id) do
-      {:ok, _post} ->
+      {:ok, post} ->
+        post = post |> Arblarg.Repo.preload([:community, :replies])
+        reply_forms = Map.put(socket.assigns.reply_forms, post.id, to_form(Temporal.change_reply(%Reply{})))
+
         {:noreply,
          socket
          |> put_flash(:info, "Posted successfully")
-         |> assign(:form, to_form(Temporal.change_post(%Post{})))}
+         |> assign(:form, to_form(%{"body" => "", "link" => ""}))
+         |> assign(:reply_forms, reply_forms)
+         |> assign(:post_count, socket.assigns.post_count + 1)
+         |> stream_insert(:posts, post, at: 0)}
 
       {:error, :rate_limit} ->
         {:noreply,
@@ -246,14 +263,28 @@ defmodule ArblargWeb.PostLive.Index do
 
   @impl true
   def handle_info({:post_created, post}, socket) do
-    post = post |> Arblarg.Repo.preload(:community)
-    reply_forms = Map.put(socket.assigns.reply_forms, post.id, to_form(Temporal.change_reply(%Reply{})))
+    # Only add the post if it belongs in the current view (global or current community)
+    should_add = case socket.assigns.community do
+      nil -> is_nil(post.community_id)  # Global feed - only show posts without community
+      community -> post.community_id == community.id  # Community feed - only show matching posts
+    end
 
-    {:noreply,
-     socket
-     |> assign(:reply_forms, reply_forms)
-     |> assign(:post_count, socket.assigns.post_count + 1)
-     |> stream_insert(:posts, post, at: 0)}
+    if should_add do
+      post = post |> Arblarg.Repo.preload([:community, :replies])
+      reply_forms = Map.put(socket.assigns.reply_forms, post.id, to_form(Temporal.change_reply(%Reply{})))
+
+      # Always get global trending posts
+      trending_posts = Temporal.list_trending_posts(limit: 5)
+
+      {:noreply,
+       socket
+       |> assign(:reply_forms, reply_forms)
+       |> assign(:post_count, socket.assigns.post_count + 1)
+       |> assign(:trending_posts, trending_posts)
+       |> stream_insert(:posts, post, at: 0)}
+    else
+      {:noreply, socket}
+    end
   end
 
   @impl true
@@ -283,6 +314,17 @@ defmodule ArblargWeb.PostLive.Index do
     end
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:trending_updated, community_id, trending_posts}, socket) do
+    # Only update if it's global trending
+    if community_id == nil do
+      trending_posts = trending_posts |> Arblarg.Repo.preload([:community, :replies])
+      {:noreply, assign(socket, :trending_posts, trending_posts)}
+    else
+      {:noreply, socket}
+    end
   end
 
   defp create_test_posts(count, duration_ms) do

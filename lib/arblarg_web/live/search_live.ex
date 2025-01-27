@@ -2,6 +2,8 @@ defmodule ArblargWeb.SearchLive do
   use ArblargWeb, :live_view
   alias Arblarg.Temporal
   import ArblargWeb.PostComponents
+  import ArblargWeb.LiveHelpers
+  on_mount ArblargWeb.Live.Hooks.SidebarHooks
 
   # Add rate limiting configuration
   @search_limit_scale 60_000  # 1 minute
@@ -16,6 +18,7 @@ defmodule ArblargWeb.SearchLive do
     client_ip = get_client_ip(session)
 
     {:ok, assign(socket, [
+      page_title: "Search",
       query: "",
       results: [],
       loading: false,
@@ -38,6 +41,11 @@ defmodule ArblargWeb.SearchLive do
           |> put_flash(:error, "Too many searches. Please wait a moment.")
           |> assign(loading: false)}
     end
+  end
+
+  @impl true
+  def handle_event("search-communities", %{"query" => query}, socket) do
+    {:noreply, handle_community_search(socket, query)}
   end
 
   # Add security-focused helper functions
@@ -70,6 +78,7 @@ defmodule ArblargWeb.SearchLive do
     expiring_within = params["expiring_within"] || socket.assigns.expiring_within
 
     if String.length(sanitized_query) >= 2 do
+      socket = assign(socket, page_title: "Search: #{sanitized_query}")
       results = Temporal.search_posts(sanitized_query)
       |> Arblarg.Repo.preload(:replies)
       |> filter_by_replies(min_replies)
@@ -86,6 +95,7 @@ defmodule ArblargWeb.SearchLive do
         results: results,
         loading: false)}
     else
+      socket = assign(socket, page_title: "Search")
       {:noreply, assign(socket,
         query: sanitized_query,
         results: [],

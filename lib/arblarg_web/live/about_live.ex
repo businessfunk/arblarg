@@ -2,7 +2,7 @@ defmodule ArblargWeb.AboutLive do
   use ArblargWeb, :live_view
 
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    {:ok, assign(socket, page_title: "About")}
   end
 
   def render(assigns) do

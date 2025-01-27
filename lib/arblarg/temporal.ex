@@ -22,6 +22,7 @@ defmodule Arblarg.Temporal do
   @max_post_lifespan_hours 168    # 7 days
 
   @shoutbox_topic "shoutbox:messages"
+  @trending_topic "trending_posts"
 
   def start_cache do
     case :ets.whereis(@posts_cache) do
@@ -99,6 +100,7 @@ defmodule Arblarg.Temporal do
         |> Repo.insert()
         |> case do
           {:ok, post} ->
+            broadcast_trending_update(post.community_id)
             post = Repo.preload(post, [:replies, :community])
             broadcast({:post_created, post})
           error ->
@@ -230,7 +232,10 @@ defmodule Arblarg.Temporal do
         |> case do
           {:ok, reply} ->
             _ = maybe_extend_expiration(post_id)
+            # Track the interaction when replying
+            _ = track_interaction(user_id, post_id)
             post = get_post!(post_id)
+            broadcast_trending_update(post.community_id)
             broadcast_update(post)
             {:ok, reply}
 
@@ -361,6 +366,7 @@ defmodule Arblarg.Temporal do
   def list_trending_posts(opts \\ []) do
     limit = Keyword.get(opts, :limit, 5)
     hours = Keyword.get(opts, :hours, 24)
+    community_id = Keyword.get(opts, :community_id)
     now = DateTime.utc_now()
     three_hours_ago = DateTime.add(now, -3 * 3600)
 
@@ -375,6 +381,13 @@ defmodule Arblarg.Temporal do
         total_replies: count(r.id)
       }
     )
+
+    # Add community filter if specified
+    base_query = if community_id do
+      from [p] in base_query, where: p.community_id == ^community_id
+    else
+      base_query
+    end
 
     # Then, get recent reply counts
     recent_replies_query = from(r in Reply,
@@ -432,6 +445,12 @@ defmodule Arblarg.Temporal do
     |> case do
       {:ok, interaction} ->
         Logger.debug("Successfully tracked interaction: #{inspect(interaction)}")
+        # Broadcast the interaction to the user's tracked posts channel
+        Phoenix.PubSub.broadcast(
+          Arblarg.PubSub,
+          "user_interactions:#{session_id}",
+          {:interaction_created, post_id}
+        )
         {:ok, interaction}
       {:error, changeset} ->
         Logger.debug("Failed to track interaction: #{inspect(changeset.errors)}")
@@ -451,5 +470,31 @@ defmodule Arblarg.Temporal do
       limit: ^limit
     )
     |> Repo.all()
+  end
+
+  def subscribe_to_trending do
+    Phoenix.PubSub.subscribe(Arblarg.PubSub, @trending_topic)
+  end
+
+  def broadcast_trending_update(community_id) do
+    # Get the latest trending posts for both global and community-specific feeds
+    global_trending = list_trending_posts(limit: 5)
+
+    # Broadcast global trending update
+    Phoenix.PubSub.broadcast(
+      Arblarg.PubSub,
+      @trending_topic,
+      {:trending_updated, nil, global_trending}
+    )
+
+    # If this is a community post, also broadcast community-specific trending
+    if community_id do
+      community_trending = list_trending_posts(limit: 5, community_id: community_id)
+      Phoenix.PubSub.broadcast(
+        Arblarg.PubSub,
+        @trending_topic,
+        {:trending_updated, community_id, community_trending}
+      )
+    end
   end
 end

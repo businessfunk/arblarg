@@ -6,10 +6,16 @@ defmodule ArblargWeb.PostLive.Show do
   require Logger
   alias Arblarg.RateLimiter
   alias Arblarg.HtmlSanitizer
+  import ArblargWeb.LayoutComponents
+  import ArblargWeb.LiveHelpers
+  on_mount ArblargWeb.Live.Hooks.SidebarHooks
 
   @impl true
   def mount(%{"id" => id}, session, socket) do
-    if connected?(socket), do: Temporal.subscribe()
+    if connected?(socket) do
+      Temporal.subscribe()
+      Temporal.subscribe_to_trending()
+    end
 
     session_id = session["user_id"]
 
@@ -32,12 +38,33 @@ defmodule ArblargWeb.PostLive.Show do
           is_op: is_op
         )
 
+        # Create a title from the post body or link title
+        page_title = cond do
+          post.link_title && post.link_title != "" -> post.link_title
+          post.body && post.body != "" -> String.slice(post.body, 0, 50) <> if String.length(post.body) > 50, do: "...", else: ""
+          true -> "Post ##{post.id}"
+        end
+
+        # Subscribe to shoutbox if connected
+        if connected?(socket) do
+          topic = Temporal.shoutbox_topic(post.community_id)
+          Phoenix.PubSub.subscribe(Arblarg.PubSub, topic)
+        end
+
+        # Get trending posts for the current community
+        trending_posts = case post.community_id do
+          nil -> Temporal.list_trending_posts(limit: 5)
+          id -> Temporal.list_trending_posts(limit: 5, community_id: id)
+        end
+
         {:ok,
          socket
-         |> assign(:page_title, "Post by #{post.author}")
+         |> assign(:page_title, page_title)
          |> assign(:post, post)
          |> assign(:thread_identity, thread_identity)
          |> assign(:user_id, session_id)
+         |> assign(:community, post.community)
+         |> assign(:trending_posts, trending_posts)
          |> assign(:reply_forms, %{post.id => to_form(Temporal.change_reply(%Reply{}))})}
     end
   end
@@ -107,5 +134,37 @@ defmodule ArblargWeb.PostLive.Show do
     end
   end
 
+  @impl true
+  def handle_info({:trending_updated, community_id, trending_posts}, socket) do
+    # Only update if it matches our current view (global or specific community)
+    if (community_id == nil && !socket.assigns.post.community_id) ||
+       (socket.assigns.post.community_id == community_id) do
+      {:noreply, assign(socket, :trending_posts, trending_posts)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("search-communities", %{"query" => query}, socket) do
+    {:noreply, handle_community_search(socket, query)}
+  end
+
   def handle_info(_, socket), do: {:noreply, socket}
+
+  defp get_user_id(session, socket) do
+    case session["user_id"] do
+      nil ->
+        ip = socket.assigns.client_ip || "127.0.0.1"
+        ip_string = :inet.ntoa(ip) |> to_string()
+        "ip_#{ip_string}"
+      user_id ->
+        user_id
+    end
+  end
+
+  defp render_post_content(post, socket) do
+    # Your existing post rendering logic
+    # This helps keep the template clean by moving complex rendering logic here
+  end
 end

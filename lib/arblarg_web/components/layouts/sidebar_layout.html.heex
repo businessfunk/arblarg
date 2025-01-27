@@ -1,0 +1,69 @@
+<div class="relative mx-auto max-w-7xl px-4 py-4">
+  <div class="grid grid-cols-12 gap-6">
+    <!-- Left Sidebar -->
+    <div class="hidden lg:block lg:col-span-3">
+      <div class="sticky top-20">
+        <div class="space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
+          <div class="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
+            <h3 class="text-sm font-medium text-white mb-3">Quick Links</h3>
+            <div class="space-y-2">
+              <.link 
+                navigate={~p"/"} 
+                class={"flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm #{if !@current_community, do: "bg-zinc-800 text-white", else: "text-zinc-400 hover:text-white hover:bg-zinc-800/50"} transition-colors"}>
+                <span>Global Feed</span>
+              </.link>
+            </div>
+          </div>
+
+          <div class="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
+            <h3 class="text-sm font-medium text-white mb-3">Popular Communities</h3>
+            
+            <div class="mb-3">
+              <form phx-change="search-communities" phx-submit="search-communities">
+                <input type="text" 
+                       name="query" 
+                       placeholder="Search communities..."
+                       class="w-full px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-600"
+                       autocomplete="off"
+                       value={@community_search}
+                       phx-debounce="300">
+              </form>
+            </div>
+
+            <div class="space-y-2">
+              <%= for community <- @popular_communities do %>
+                <.link 
+                  navigate={~p"/c/#{community.slug}"} 
+                  class={"flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm #{if @current_community && @current_community.id == community.id, do: "bg-zinc-800 text-white", else: "text-zinc-400 hover:text-white hover:bg-zinc-800/50"} transition-colors"}>
+                  <span><%= community.name %></span>
+                </.link>
+              <% end %>
+
+              <%= if @community_search != "" and @searched_communities != [] do %>
+                <div class="pt-2 border-t border-zinc-800">
+                  <%= for community <- @searched_communities do %>
+                    <.link 
+                      navigate={~p"/c/#{community.slug}"} 
+                      class={"flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm #{if @current_community && @current_community.id == community.id, do: "bg-zinc-800 text-white", else: "text-zinc-400 hover:text-white hover:bg-zinc-800/50"} transition-colors"}>
+                      <span><%= community.name %></span>
+                    </.link>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-span-12 lg:col-span-6">
+      <%= render_slot(@inner_block) %>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="hidden lg:block lg:col-span-3">
+      <!-- ... rest of the existing right sidebar code ... -->
+    </div>
+  </div>
+</div> 

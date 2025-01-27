@@ -9,6 +9,7 @@ defmodule Arblarg.Communities.Community do
     field :description, :string
     field :rules, :string
     field :creator_id, :string
+    field :post_count, :integer, virtual: true
     has_many :posts, Post
 
     timestamps()
