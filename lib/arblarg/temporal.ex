@@ -11,6 +11,8 @@ defmodule Arblarg.Temporal do
   alias Arblarg.Temporal.Reply
   alias Arblarg.RateLimiter
   alias Arblarg.Temporal.Shout
+  alias Arblarg.Temporal.PostInteraction
+  require Logger
 
   @posts_cache :posts_cache
 
@@ -403,6 +405,43 @@ defmodule Arblarg.Temporal do
           p.inserted_at
         )
       ],
+      preload: [:community, :replies],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
+  def track_interaction(session_id, post_id) do
+    require Logger
+    Logger.debug("Attempting to track interaction - Session ID: #{inspect(session_id)}, Post ID: #{inspect(post_id)}")
+
+    # Convert post_id to integer if it's a string
+    post_id = if is_binary(post_id), do: String.to_integer(post_id), else: post_id
+
+    %PostInteraction{}
+    |> PostInteraction.changeset(%{session_id: session_id, post_id: post_id})
+    |> Repo.insert(
+      on_conflict: :nothing,
+      conflict_target: [:session_id, :post_id]
+    )
+    |> case do
+      {:ok, interaction} ->
+        Logger.debug("Successfully tracked interaction: #{inspect(interaction)}")
+        {:ok, interaction}
+      {:error, changeset} ->
+        Logger.debug("Failed to track interaction: #{inspect(changeset.errors)}")
+        {:error, changeset}
+      # Handle the case where on_conflict: :nothing returns nil
+      {:ok, nil} -> {:ok, :already_tracked}
+    end
+  end
+
+  def list_user_interactions(session_id, limit \\ 50) do
+    from(p in Post,
+      join: pi in PostInteraction,
+      on: pi.post_id == p.id,
+      where: pi.session_id == ^session_id and p.expires_at > ^DateTime.utc_now(),
+      order_by: [desc: pi.inserted_at],
       preload: [:community, :replies],
       limit: ^limit
     )

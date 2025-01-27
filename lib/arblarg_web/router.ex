@@ -19,6 +19,9 @@ defmodule ArblargWeb.Router do
       conn
     else
       user_id = :crypto.strong_rand_bytes(32) |> Base.encode64()
+      # Debug logging
+      require Logger
+      Logger.debug("Assigning new user_id: #{user_id}")
       conn
       |> put_session(:user_id, user_id)
     end
@@ -46,6 +49,7 @@ defmodule ArblargWeb.Router do
     live "/about", AboutLive, :index
     live "/faq", FaqLive, :index
     live "/settings", SettingsLive, :index
+    live "/tracked", TrackedPostsLive, :index
   end
 
   if Application.compile_env(:arblarg, :dev_routes) do

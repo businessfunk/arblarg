@@ -11,6 +11,8 @@ defmodule ArblargWeb.PostLive.Show do
   def mount(%{"id" => id}, session, socket) do
     if connected?(socket), do: Temporal.subscribe()
 
+    session_id = session["user_id"]
+
     case Temporal.get_post!(id) do
       nil ->
         {:ok,
@@ -35,38 +37,52 @@ defmodule ArblargWeb.PostLive.Show do
          |> assign(:page_title, "Post by #{post.author}")
          |> assign(:post, post)
          |> assign(:thread_identity, thread_identity)
-         |> assign(:reply_form, to_form(Temporal.change_reply(%Reply{})))}
+         |> assign(:user_id, session_id)
+         |> assign(:reply_forms, %{post.id => to_form(Temporal.change_reply(%Reply{}))})}
     end
   end
 
   @impl true
-  def handle_event("reply", params, socket) do
-    post_id = params["post-id"]
-    reply_params = params["reply"]
-    Logger.debug("""
-    Creating reply:
-    Post ID: #{post_id}
-    Params: #{inspect(reply_params)}
-    Thread Identity: #{inspect(socket.assigns.thread_identity)}
-    Is OP: #{socket.assigns.post.author == socket.assigns.thread_identity}
-    """)
+  def handle_event("reply", %{"post-id" => post_id, "reply" => %{"body" => body}}, socket) do
+    require Logger
+    Logger.debug("Creating reply - Post ID: #{inspect(post_id)}, User ID: #{inspect(socket.assigns.user_id)}")
 
+    # Trim whitespace from body
+    body = String.trim(body)
+
+    reply_params = %{"body" => body}
     reply_params = Map.put(reply_params, "author", socket.assigns.thread_identity)
     reply_params = Map.put(reply_params, "is_op", socket.assigns.post.author == socket.assigns.thread_identity)
 
-    case Temporal.create_reply(
-      post_id,
-      reply_params
-    ) do
+    case Temporal.create_reply(post_id, reply_params, socket.assigns.user_id) do
       {:ok, _reply} ->
-        Logger.debug("Reply created successfully")
-        {:noreply,
-         socket
-         |> assign(:reply_form, to_form(Temporal.change_reply(%Reply{})))}
+        case Temporal.track_interaction(socket.assigns.user_id, post_id) do
+          {:ok, interaction} ->
+            Logger.debug("Interaction tracked successfully: #{inspect(interaction)}")
+            {:noreply,
+             socket
+             |> put_flash(:info, "Reply posted")
+             |> update(:reply_forms, fn forms ->
+               Map.put(forms, post_id, to_form(%{"body" => ""}))
+             end)}
+          {:error, changeset} ->
+            Logger.debug("Failed to track interaction: #{inspect(changeset.errors)}")
+            {:noreply,
+             socket
+             |> put_flash(:error, "Failed to track interaction")
+             |> update(:reply_forms, fn forms ->
+               Map.put(forms, post_id, to_form(%{"body" => ""}))
+             end)}
+        end
 
       {:error, %Ecto.Changeset{} = changeset} ->
         Logger.debug("Reply creation failed: #{inspect(changeset.errors)}")
-        {:noreply, assign(socket, :reply_form, to_form(changeset))}
+        {:noreply,
+         socket
+         |> put_flash(:error, "Reply #{translate_error(hd(changeset.errors[:body]))}")
+         |> update(:reply_forms, fn forms ->
+           Map.put(forms, post_id, to_form(changeset))
+         end)}
     end
   end
 

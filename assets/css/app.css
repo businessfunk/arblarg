@@ -141,7 +141,8 @@ html[data-show-timestamps="false"] [data-timestamp] {
 
   .sticky {
     position: sticky;
-    top: 24px; /* Adjust this value to match your header height */
+    top: var(--sticky-top, 5rem);
+    height: fit-content;
   }
   
   /* Optional: Add smooth transitions for hover states */
@@ -151,10 +152,8 @@ html[data-show-timestamps="false"] [data-timestamp] {
   
   /* Optional: Add custom scrollbar for long sidebars */
   .sidebar-content {
-    max-height: calc(100vh - 100px);
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: theme('colors.zinc.700') theme('colors.zinc.900');
+    margin: 0;
+    padding: 0;
   }
   
   .sidebar-content::-webkit-scrollbar {
@@ -168,6 +167,26 @@ html[data-show-timestamps="false"] [data-timestamp] {
   .sidebar-content::-webkit-scrollbar-thumb {
     background-color: theme('colors.zinc.700');
     border-radius: 3px;
+  }
+
+  /* Sidebar scroll containers */
+  .sticky > div {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.zinc.700') theme('colors.zinc.900');
+    padding-bottom: 2rem;
+  }
+
+  .sticky > div::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sticky > div::-webkit-scrollbar-track {
+    background: theme('colors.zinc.900');
+  }
+
+  .sticky > div::-webkit-scrollbar-thumb {
+    background-color: theme('colors.zinc.700');
+    border-radius: 2px;
   }
 }
 
@@ -245,14 +264,32 @@ html[data-show-timestamps="false"] [data-timestamp] {
   transform-origin: left;
 }
 
-/* Optional: Add a subtle pulse animation to the progress bar */
-@keyframes pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+/* Flash message animations */
+@keyframes slide-in-top {
+  0% {
+    transform: translate(-50%, -100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-top {
+  animation: slide-in-top 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Progress bar animation */
+@keyframes progress {
+  0% { width: 100%; opacity: 1; }
+  95% { width: 0%; opacity: 1; }
+  100% { width: 0%; opacity: 0; }
 }
 
 .flash-progress {
-  animation: pulse 2s ease-in-out infinite;
+  animation: progress 5s linear;
+  animation-fill-mode: forwards;
 }
 
 /* Add these styles for shoutbox links */
@@ -328,4 +365,15 @@ html[data-show-media="true"] [data-media-preview] {
 
 html[data-show-media="true"] [data-media-hidden-message] {
   display: none !important;
+}
+
+/* Add shake animation for form errors */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
 }

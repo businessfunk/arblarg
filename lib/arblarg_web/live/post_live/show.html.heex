@@ -86,7 +86,7 @@
     
     <div class="mt-3 space-y-3">
       <.reply_list replies={@post.replies} />
-      <.reply_form form={@reply_form} post_id={@post.id} />
+      <.reply_form form={@reply_forms[@post.id]} post_id={@post.id} />
     </div>
   </div>
 </div> 

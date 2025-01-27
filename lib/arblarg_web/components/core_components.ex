@@ -110,37 +110,43 @@ defmodule ArblargWeb.CoreComponents do
     <div
       :if={msg = Phoenix.Flash.get(@flash, @kind)}
       id={@id}
-      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> JS.remove_class("opacity-100") |> JS.add_class("opacity-0")}
-      phx-hook="Flash"
-      class={[
-        "fixed top-24 right-[max(2rem,calc((100vw-42rem)/2-24rem))] w-80 z-50 rounded-lg p-4 shadow-md transition-all duration-500 opacity-100 overflow-hidden",
-        @kind == :info && "bg-emerald-950 text-emerald-200 border border-emerald-900/50",
-        @kind == :error && "bg-red-950 text-red-200 border border-red-900/50"
-      ]}
+      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
+      class={[
+        "fixed top-4 left-1/2 transform -translate-x-1/2 z-50",
+        "w-full max-w-sm rounded-lg shadow-lg",
+        "bg-zinc-900 border border-zinc-800",
+        "animate-slide-in-top"
+      ]}
+      phx-hook="Flash"
       phx-value-key={@kind}
     >
-      <div class="flex items-start gap-3">
-        <div :if={@kind == :info} class="h-6 w-6 flex-none">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+      <div class="p-4">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-5 w-5 text-emerald-400" />
+            <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-5 w-5 text-red-400" />
+          </div>
+          <div class="ml-3 w-0 flex-1">
+            <p class={[
+              "text-sm font-medium",
+              @kind == :info && "text-emerald-400",
+              @kind == :error && "text-red-400"
+            ]}>
+              <%= msg %>
+            </p>
+          </div>
+          <div class="ml-4 flex flex-shrink-0">
+            <button type="button" class="text-zinc-400 hover:text-zinc-300">
+              <.icon name="hero-x-mark-mini" class="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <div :if={@kind == :error} class="h-6 w-6 flex-none">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <p class="flex-1 text-sm font-medium"><%= msg %></p>
-        <button type="button" class="text-sm opacity-50 hover:opacity-100" aria-label="Close">
-          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
-          </svg>
-        </button>
       </div>
-      <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/10">
-        <div class="h-full flash-progress" style="width: 100%"></div>
-      </div>
+      <div class="flash-progress h-0.5 bg-gradient-to-r from-transparent via-current to-transparent" class={[
+        @kind == :info && "text-emerald-400",
+        @kind == :error && "text-red-400"
+      ]} />
     </div>
     """
   end
@@ -224,9 +230,9 @@ defmodule ArblargWeb.CoreComponents do
         # Default padding unless size is specified
         assigns[:size] == nil && "py-2 px-3 leading-6",
         # Small size
-        assigns[:size] == "sm" && "h-[38px] px-3 leading-4",
+        assigns[:size] == "sm" && "py-2 px-3 leading-4",
         # Extra small size - matching input exactly
-        assigns[:size] == "xs" && "h-[38px] px-4 text-sm leading-none",
+        assigns[:size] == "xs" && "py-2 px-4 text-sm leading-none",
         @class
       ]}
       {@rest}
@@ -383,12 +389,14 @@ defmodule ArblargWeb.CoreComponents do
           "focus:border-zinc-600 focus:ring-0",
           "font-mono text-sm",
           "px-3 py-2",
-          @errors != [] && "border-rose-400 focus:border-rose-400",
+          @errors != [] && "border-red-500 focus:border-red-500 animate-shake",
           @class
         ]}
         {@rest}
       />
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <div class="mt-1">
+        <.error :for={msg <- @errors}>{msg}</.error>
+      </div>
     </div>
     """
   end
@@ -679,6 +687,9 @@ defmodule ArblargWeb.CoreComponents do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
 
+  @doc """
+  Renders a back to top button.
+  """
   def back_to_top(assigns) do
     ~H"""
     <div id="back-to-top-container" phx-hook="BackToTop">

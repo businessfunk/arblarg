@@ -64,20 +64,26 @@ defmodule ArblargWeb.PostComponents do
 
   def reply_form(assigns) do
     ~H"""
-    <.form for={@form} phx-submit="reply" phx-value-post-id={@post_id} class="mt-6 pt-4 border-t border-zinc-800">
-      <div class="space-y-2">
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <.input field={@form[:body]} type="text"
-                    placeholder="Reply to this blarg..."
-                    class="bg-zinc-900 text-white border-zinc-700"
-                    phx-debounce="blur"/>
-          </div>
-          <.button phx-disable-with="..." size="xs">Respond</.button>
+    <.form for={@form} phx-submit="reply" phx-value-post-id={@post_id} class="mt-6 pt-4 border-t border-zinc-800 space-y-3" phx-feedback-for={"reply-#{@post_id}"}>
+      <div class="relative">
+        <.input
+          field={@form[:body]}
+          type="text"
+          id={"reply-#{@post_id}"}
+          placeholder="Reply to this blarg..."
+          class="bg-zinc-900 text-white border-zinc-700"
+          phx-debounce="blur"
+        />
+        <div class="mt-1">
+          <.error :for={error <- @form[:body].errors}>
+            <%= translate_error(error) %>
+          </.error>
         </div>
-        <div :if={@form.errors[:body]} class="text-sm text-red-400 mt-1">
-          <%= error_to_string(@form.errors[:body]) %>
-        </div>
+      </div>
+      <div class="flex justify-end">
+        <.button phx-disable-with="..." size="sm">
+          Reply
+        </.button>
       </div>
     </.form>
     """
