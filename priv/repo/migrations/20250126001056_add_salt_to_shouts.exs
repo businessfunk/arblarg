@@ -7,7 +7,5 @@ defmodule Arblarg.Repo.Migrations.AddSaltToShouts do
       modify :author, :string, null: false
       modify :message, :string, null: false
     end
-
-    create index(:shouts, [:community_id])
   end
 end
