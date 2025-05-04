@@ -30,7 +30,7 @@
     <% end %>
     
     <div data-show-compose class="compose-form">
-      <.form for={@form} phx-submit="create" class="space-y-4">
+      <.form for={@form} phx-submit="create" name="post" id="post-form" class="space-y-4">
         <div class="space-y-2">
           <.input
             field={@form[:body]}
@@ -38,21 +38,11 @@
             label="Share your ephemeral blarg"
             class="w-full min-h-[80px] resize-none bg-zinc-900 text-white border-zinc-700"
             maxlength="5000"
-            placeholder="What's on your mind? Share a blarg..."
+            placeholder="What's on your mind? Share a blarg or paste a link..."
             phx-debounce="blur"
           />
         </div>
 
-        <div class="space-y-2">
-          <.input
-            field={@form[:link]}
-            type="url"
-            label="Add a link (optional)"
-            class="bg-zinc-900 text-white border-zinc-700"
-            placeholder="https://"
-            phx-debounce="blur"
-          />
-        </div>
         <div class="flex justify-between items-center gap-4">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">

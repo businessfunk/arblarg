@@ -59,7 +59,7 @@ defmodule ArblargWeb.PostLive.Index do
   end
 
   @impl true
-  def handle_event("create", %{"post" => post_params, "expire_hours" => hours, "community_id" => community_id}, socket) do
+  def handle_event("create", %{"post" => %{"body" => body}, "expire_hours" => hours, "community_id" => community_id}, socket) do
     random_salt = :crypto.strong_rand_bytes(16) |> Base.url_encode64()
     {author, _} = UserIdentity.generate_tripcode(socket.assigns.user_id, random_salt, [], is_op: true)
 
@@ -67,65 +67,16 @@ defmodule ArblargWeb.PostLive.Index do
       DateTime.utc_now()
       |> DateTime.add(String.to_integer(hours) * 3600)
 
-    params = post_params
-    |> Map.merge(%{
-      "author" => author,
-      "author_salt" => random_salt,
-      "expires_at" => expires_at
-    })
+    # Attempt to find a link within the body
+    link = extract_link_from_body(body)
 
-    # Only add community_id if it's not "global"
-    params = if community_id == "home", do: params, else: Map.put(params, "community_id", community_id)
-
-    case Temporal.create_post(params, socket.assigns.user_id) do
-      {:ok, post} ->
-        post = post |> Arblarg.Repo.preload([:community, :replies])
-        reply_forms = Map.put(socket.assigns.reply_forms, post.id, to_form(Temporal.change_reply(%Reply{})))
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Posted successfully")
-         |> assign(:form, to_form(%{"body" => "", "link" => ""}))
-         |> assign(:reply_forms, reply_forms)
-         |> assign(:post_count, socket.assigns.post_count + 1)
-         |> stream_insert(:posts, post, at: 0)}
-
-      {:error, :rate_limit} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "You're posting too quickly. Please wait a moment.")
-         |> assign(:form, to_form(post_params))}
-
-      {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
-    end
-  end
-
-  @impl true
-  def handle_event("validate", %{"post" => post_params}, socket) do
-    changeset =
-      %Post{}
-      |> Temporal.change_post(post_params)
-      |> Map.put(:action, :validate)
-
-    {:noreply, assign(socket, form: to_form(changeset))}
-  end
-
-  # Add this clause to handle the form submission with different parameter format
-  def handle_event("create", %{"body" => body, "link" => link, "community_id" => community_id, "expire_hours" => hours}, socket) do
-    random_salt = :crypto.strong_rand_bytes(16) |> Base.url_encode64()
-    {author, _} = UserIdentity.generate_tripcode(socket.assigns.user_id, random_salt, [], is_op: true)
-
-    expires_at =
-      DateTime.utc_now()
-      |> DateTime.add(String.to_integer(hours) * 3600)
-
+    # Prepare params, starting with the essential ones
     params = %{
-      "body" => body,
-      "link" => link,
+      "body" => body, # Use the directly bound body variable
       "author" => author,
       "author_salt" => random_salt,
-      "expires_at" => expires_at
+      "expires_at" => expires_at,
+      "link" => link # Add the extracted link (will be nil if none found)
     }
 
     # Only add community_id if it's not "global"
@@ -139,7 +90,7 @@ defmodule ArblargWeb.PostLive.Index do
         {:noreply,
          socket
          |> put_flash(:info, "Posted successfully")
-         |> assign(:form, to_form(%{"body" => "", "link" => ""}))
+         |> assign(:form, to_form(Temporal.change_post(%Post{})))
          |> assign(:reply_forms, reply_forms)
          |> assign(:post_count, socket.assigns.post_count + 1)
          |> stream_insert(:posts, post, at: 0)}
@@ -148,11 +99,24 @@ defmodule ArblargWeb.PostLive.Index do
         {:noreply,
          socket
          |> put_flash(:error, "You're posting too quickly. Please wait a moment.")
-         |> assign(:form, to_form(%{"body" => body, "link" => link}))}
+         |> assign(:form, to_form(%{"body" => body}))}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        # When there's a validation error, we need to repopulate the form
+        # with the submitted data (just the body in this case)
+        form_data = %{"body" => body}
+        {:noreply, assign(socket, form: to_form(changeset, form_data))}
     end
+  end
+
+  @impl true
+  def handle_event("validate", %{"post" => post_params}, socket) do
+    changeset =
+      %Post{}
+      |> Temporal.change_post(post_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, form: to_form(changeset))}
   end
 
   @impl true
@@ -424,5 +388,20 @@ defmodule ArblargWeb.PostLive.Index do
     end
 
     {:noreply, socket}
+  end
+
+  # Helper function to extract the first URL from the body text
+  defp extract_link_from_body(body) do
+    # Simple regex to find the first likely URL. Can be improved.
+    case Regex.run(~r{(https?://[^\s]+)}, body) do
+      [full_match | _] -> 
+        # Basic validation: Check if it contains a dot after http(s)://
+        if String.contains?(String.slice(full_match, 8..-1), ".") do
+          full_match
+        else
+          nil
+        end
+      _ -> nil
+    end
   end
 end

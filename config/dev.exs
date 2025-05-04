@@ -3,7 +3,7 @@ import Config
 # Configure your database
 config :arblarg, Arblarg.Repo,
   username: System.get_env("DB_USERNAME", "postgres"),
-  password: System.get_env("DB_PASSWORD", "postgres"),
+  password: System.get_env("DB_PASSWORD", ""),
   hostname: System.get_env("DB_HOSTNAME", "localhost"),
   database: "arblarg_dev",
   stacktrace: true,
